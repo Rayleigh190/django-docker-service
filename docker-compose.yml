@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    env_file:
+      - ./app/.env
+    volumes:
+      - ./app:/code
+      - static_volume:/code/static
+      - media_volume:/code/media
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/code/static
+      - media_volume:/code/media
+
+  db:
+    image: mysql:8.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: django_db
+      MYSQL_USER: django_user
+      MYSQL_PASSWORD: django_pass
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"  # EC2에서는 보안그룹으로 잠그는 걸 강력 추천
+
+volumes:
+  db_data:
+  static_volume:
+  media_volume:
